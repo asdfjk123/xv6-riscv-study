@@ -11,7 +11,7 @@ docker build -t xv6-env .
 # 3. 빌드 성공 시 컨테이너 실행 및 내부 진입
 if [ $? -eq 0 ]; then
     echo "빌드 성공! 컨테이너를 실행합니다."
-    docker run -it --name my-xv6-lab xv6-env /bin/bash
+    docker run -it --name my-xv6-lab xv6-env
 else
     echo "빌드에 실패했습니다. Dockerfile이 같은 폴더에 있는지 확인해주세요."
 fi
