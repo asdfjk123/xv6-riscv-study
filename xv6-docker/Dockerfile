@@ -17,3 +17,6 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /home/xv6
 RUN git clone https://github.com/mit-pdos/xv6-riscv.git .
 
+# 컨테이너 시작 후 프로그램 시작
+CMD ["sh", "-c", "make qemu && /bin/bash"]
+
