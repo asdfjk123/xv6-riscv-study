@@ -82,10 +82,10 @@ mycpu(void)
 struct proc*
 myproc(void)
 {
-  push_off();
-  struct cpu *c = mycpu();
-  struct proc *p = c->proc;
-  pop_off();
+  push_off(); // SIE (인터럽트) 비활성화
+  struct cpu *c = mycpu(); // CPU 컨텍스트 가져오기
+  struct proc *p = c->proc; // CPU 에서 실행되는 프로세스 컨텍스트를 p 에 저장
+  pop_off(); // SIE (인터럽트) 활성화
   return p;
 }
 
@@ -424,10 +424,10 @@ kwait(uint64 addr)
 void
 scheduler(void)
 {
-  struct proc *p;
-  struct cpu *c = mycpu();
+  struct proc *p; // 새로운 프로세스
+  struct cpu *c = mycpu(); //  현재 CPU (proc 객체 포함되어 있음)
 
-  c->proc = 0;
+  c->proc = 0; // 초기화
   for(;;){
     // The most recent process to run may have had interrupts
     // turned off; enable them to avoid a deadlock if all
@@ -438,14 +438,18 @@ scheduler(void)
     intr_off();
 
     int found = 0;
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
+    for(p = proc; p < &proc[NPROC]; p++) { // 현재 실행 대기 중인 프로세스만큼
+      acquire(&p->lock); // 락 일단 걸고
+      if(p->state == RUNNABLE) { // CPU 컨텍스트에 올라갈 수 있는 상태라면
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
+        p->state = RUNNING; // 실행 상태로 일단 바꾼다.
+        c->proc = p; // p 객체를 아예 CPU 에 집어 넣는다.
+
+        /* 어셈블리어를 통해, ra 값이 업데이트 된 후 ret 를 통해 프로세스의 ra 값으로 점프한다. 즉, 뒤의 명령어를 실행하는 게 아니다.
+         * scheduler() 함수의 컨텍스트를 c->context (메모리 공간) 에 백업하고, 프로세스의 컨텍스트를 레지스터에 올린다.
+         */
         swtch(&c->context, &p->context);
 
         // Process is done running for now.
@@ -469,12 +473,14 @@ scheduler(void)
 // be proc->intena and proc->noff, but that would
 // break in the few places where a lock is held but
 // there's no process.
+// 프로세스에서 스케줄러로 컨텍스트 전환을 위해 부르는 함수
 void
 sched(void)
 {
   int intena;
-  struct proc *p = myproc();
+  struct proc *p = myproc(); // 현재 실행되는 프로세스 가져오기
 
+  // 갖가지 예외 상황 검사 후 예외 상황 있으면 exception
   if(!holding(&p->lock))
     panic("sched p->lock");
   if(mycpu()->noff != 1)
@@ -484,8 +490,9 @@ sched(void)
   if(intr_get())
     panic("sched interruptible");
 
+
   intena = mycpu()->intena;
-  swtch(&p->context, &mycpu()->context);
+  swtch(&p->context, &mycpu()->context); // 여기서 컨텍스트 스위칭
   mycpu()->intena = intena;
 }
 

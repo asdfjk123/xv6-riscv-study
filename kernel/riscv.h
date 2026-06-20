@@ -47,6 +47,8 @@ w_mepc(uint64 x)
 #define SSTATUS_SIE (1L << 1)  // Supervisor Interrupt Enable
 #define SSTATUS_UIE (1L << 0)  // User Interrupt Enable
 
+
+// Supervisor-mode status 레지스터를 읽어온다.
 static inline uint64
 r_sstatus()
 {
@@ -290,6 +292,7 @@ intr_on()
 }
 
 // disable device interrupts
+// SIE 비활성화
 static inline void
 intr_off()
 {
@@ -297,11 +300,13 @@ intr_off()
 }
 
 // are device interrupts enabled?
+// Q) 왜 SIE 만 확인하는 것만으로 intr_get 를 구현했을까?
+// A) Machine-mode 는 대부분 운영체제 의 주요 동작에서 사용되는 모드가 아니다. 그래서 Supervisor-mode 까지만 확인하는 것.
 static inline int
 intr_get()
 {
-  uint64 x = r_sstatus();
-  return (x & SSTATUS_SIE) != 0;
+  uint64 x = r_sstatus(); // supervisor 정보 가져오기
+  return (x & SSTATUS_SIE) != 0; // SIE -> Supervisor 모드일 때 인터럽트 들어오는 게 허용되어 있는가?
 }
 
 static inline uint64

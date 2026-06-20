@@ -84,18 +84,20 @@ holding(struct spinlock *lk)
 // push_off/pop_off are like intr_off()/intr_on() except that they are matched:
 // it takes two pop_off()s to undo two push_off()s.  Also, if interrupts
 // are initially off, then push_off, pop_off leaves them off.
-
+// intr_off 와 유사하지만, 첫 push_off() 를 호출하면 SIE 이전 상태가 백업되고, 그 이후 push_off() 를 호출하면 호출 횟수가 쌓인다. 물론 SIE 비활성화는 계속 하고.
+// 용도: SIE 를 비활성화 해야 하는 두 개의 A,B 함수가 있고, A 안에 B 가 있다고 할 때, B 가 끝났어도 A 에서는 안 풀려야 하지 않는가? 이런 중첩된 함수에 사용된다.
 void
 push_off(void)
 {
-  int old = intr_get();
+  int old = intr_get(); // 기존 SIE 비트 백업
 
   // disable interrupts to prevent an involuntary context
   // switch while using mycpu().
-  intr_off();
+  intr_off(); // SIE 비활성화 (Supervisor-mode 일 때 인터럽트 안 받도록)
 
+  //
   if(mycpu()->noff == 0)
-    mycpu()->intena = old;
+    mycpu()->intena = old; //
   mycpu()->noff += 1;
 }
 
